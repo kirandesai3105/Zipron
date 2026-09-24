@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compare Prices - Zipron</title>
+
+  <title>Compare Prices Online | Zipron</title>
+
+  <meta
+    name="description"
+    content="Search products and compare prices across online stores with Zipron."
+  >
+
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 
@@ -11,7 +18,10 @@
 
 <header class="site-header">
   <div class="container nav">
-    <a class="brand" href="index.html">Zipron</a>
+
+    <a class="brand" href="index.html">
+      Zipron
+    </a>
 
     <nav>
       <a href="index.html">Home</a>
@@ -22,45 +32,245 @@
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
     </nav>
+
   </div>
 </header>
 
-<main class="section">
 
-  <div class="container">
+<main>
 
-    <h1>Compare Product Prices</h1>
+  <!-- HERO -->
 
-    <p class="lead">
-      Search for any product and compare available prices across online stores.
-    </p>
+  <section class="compare-hero">
 
-    <div class="search">
-      <input
-        id="search"
-        type="text"
-        placeholder="Search any product e.g. iPhone 15 case, smartwatch, earbuds..."
-        autocomplete="off"
-      >
+    <div class="container">
 
-      <button id="searchButton" class="compare-button">
-        🔍 Compare Prices
-      </button>
+      <div class="compare-badge">
+        🔎 SMART PRICE COMPARISON
+      </div>
+
+      <h1>
+        Find the right product<br>
+        at the right price.
+      </h1>
+
+      <p>
+        Search for any product and discover available
+        offers from online retailers.
+      </p>
+
+
+      <div class="zipron-search">
+
+        <input
+          id="search"
+          type="text"
+          placeholder="What are you looking for?"
+          autocomplete="off"
+        >
+
+        <button
+          id="searchButton"
+          type="button"
+        >
+          🔍 Compare Prices
+        </button>
+
+      </div>
+
+
+      <div class="search-examples">
+
+        <span>Try:</span>
+
+        <button
+          type="button"
+          class="example-search"
+          data-search="Samsung Galaxy S24 case"
+        >
+          Galaxy S24 Case
+        </button>
+
+        <button
+          type="button"
+          class="example-search"
+          data-search="wireless earbuds"
+        >
+          Wireless Earbuds
+        </button>
+
+        <button
+          type="button"
+          class="example-search"
+          data-search="smartwatch"
+        >
+          Smartwatch
+        </button>
+
+        <button
+          type="button"
+          class="example-search"
+          data-search="power bank"
+        >
+          Power Bank
+        </button>
+
+      </div>
+
     </div>
 
-    <div id="status"></div>
+  </section>
 
-    <div id="results" class="products"></div>
 
-  </div>
+  <!-- RESULTS -->
+
+  <section class="section">
+
+    <div class="container">
+
+      <div id="status"></div>
+
+      <div
+        id="results"
+        class="products"
+      ></div>
+
+    </div>
+
+  </section>
+
+
+  <!-- HOW IT WORKS -->
+
+  <section class="section how-section">
+
+    <div class="container">
+
+      <h2>
+        How Zipron works
+      </h2>
+
+      <p class="lead">
+        Simple, fast and designed to help you compare before you buy.
+      </p>
+
+
+      <div class="how-grid">
+
+        <div class="how-card">
+
+          <div class="how-icon">
+            🔎
+          </div>
+
+          <h3>
+            1. Search
+          </h3>
+
+          <p>
+            Enter the product you are looking for.
+          </p>
+
+        </div>
+
+
+        <div class="how-card">
+
+          <div class="how-icon">
+            ⚡
+          </div>
+
+          <h3>
+            2. Compare
+          </h3>
+
+          <p>
+            Zipron checks available retailer offers.
+          </p>
+
+        </div>
+
+
+        <div class="how-card">
+
+          <div class="how-icon">
+            💰
+          </div>
+
+          <h3>
+            3. Save
+          </h3>
+
+          <p>
+            Compare prices before visiting the retailer.
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- TRUST -->
+
+  <section class="section">
+
+    <div class="container">
+
+      <div class="notice zipron-trust">
+
+        <h2>
+          Compare before you buy
+        </h2>
+
+        <p>
+          Zipron is being built to make online shopping
+          simpler by bringing product offers together in one place.
+        </p>
+
+        <p>
+          Retailer availability and prices are checked when
+          supported connections are available.
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
 
 </main>
 
+
 <footer class="footer">
+
   <div class="container">
-    <p>© 2026 Zipron. Compare before you buy.</p>
+
+    <p>
+      © 2026 Zipron. Compare before you buy.
+    </p>
+
+    <p>
+      <a href="affiliate-disclosure.html">
+        Affiliate Disclosure
+      </a>
+      ·
+      <a href="privacy.html">
+        Privacy
+      </a>
+      ·
+      <a href="terms.html">
+        Terms
+      </a>
+    </p>
+
   </div>
+
 </footer>
+
 
 <script src="assets/app.js"></script>
 
