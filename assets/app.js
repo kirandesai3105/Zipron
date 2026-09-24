@@ -22,9 +22,7 @@ function money(value) {
   return "₹" + Number(value).toLocaleString("en-IN");
 }
 
-
 function setStatus(message) {
-
   if (!statusEl) return;
 
   statusEl.innerHTML = `
@@ -34,6 +32,75 @@ function setStatus(message) {
   `;
 }
 
+function getStoreClass(store) {
+  return String(store || "retailer")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
+}
+
+function savePriceHistory(title, offers) {
+
+  if (!offers.length) return;
+
+  try {
+
+    const history =
+      JSON.parse(
+        localStorage.getItem("zipronPriceHistory") || "{}"
+      );
+
+    if (!history[title]) {
+      history[title] = [];
+    }
+
+    offers.forEach(offer => {
+
+      if (offer.price == null) return;
+
+      history[title].push({
+        store: offer.store || "Retailer",
+        price: Number(offer.price),
+        date: new Date().toISOString()
+      });
+
+    });
+
+    // Keep the browser history manageable.
+    history[title] =
+      history[title].slice(-100);
+
+    localStorage.setItem(
+      "zipronPriceHistory",
+      JSON.stringify(history)
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Price history could not be saved.",
+      error
+    );
+
+  }
+}
+
+function getHistory(title) {
+
+  try {
+
+    const history =
+      JSON.parse(
+        localStorage.getItem("zipronPriceHistory") || "{}"
+      );
+
+    return history[title] || [];
+
+  } catch {
+
+    return [];
+
+  }
+}
 
 async function compareProduct() {
 
@@ -54,9 +121,7 @@ async function compareProduct() {
     return;
   }
 
-
   resultsEl.innerHTML = "";
-
 
   setStatus(`
     <div class="searching-box">
@@ -77,12 +142,8 @@ async function compareProduct() {
     </div>
   `);
 
-
   searchButton.disabled = true;
-
-  searchButton.innerHTML =
-    "⏳ Searching...";
-
+  searchButton.innerHTML = "⏳ Searching...";
 
   try {
 
@@ -101,9 +162,7 @@ async function compareProduct() {
       }
     );
 
-
     const data = await response.json();
-
 
     if (!response.ok) {
 
@@ -114,14 +173,11 @@ async function compareProduct() {
 
     }
 
-
     showResults(title, data);
-
 
   } catch (error) {
 
     setStatus(`
-
       <div class="error-box">
 
         <h2>
@@ -137,28 +193,20 @@ async function compareProduct() {
         </small>
 
       </div>
-
     `);
 
-  }
-
-
-  finally {
+  } finally {
 
     searchButton.disabled = false;
-
     searchButton.innerHTML =
       "🔍 Compare Prices";
 
   }
-
 }
-
 
 function showResults(title, data) {
 
   const offers = data.offers || [];
-
 
   if (!offers.length) {
 
@@ -211,6 +259,10 @@ function showResults(title, data) {
     return;
   }
 
+  // Store verified prices locally.
+  savePriceHistory(title, offers);
+
+  const history = getHistory(title);
 
   setStatus(`
 
@@ -229,131 +281,210 @@ function showResults(title, data) {
       </div>
 
       <span class="offer-count">
-        ${offers.length} offer${offers.length === 1 ? "" : "s"}
+        ${offers.length}
+        ${offers.length === 1 ? "offer" : "offers"}
       </span>
 
     </div>
 
   `);
 
+  resultsEl.innerHTML = `
 
-  resultsEl.innerHTML = offers.map(
-    (offer, index) => {
+    <div class="comparison-grid">
 
-      const store =
-        escapeHtml(
-          offer.store ||
-          "Retailer"
-        );
+      ${offers.map((offer, index) => {
 
+        const store =
+          escapeHtml(
+            offer.store || "Retailer"
+          );
 
-      const offerTitle =
-        escapeHtml(
-          offer.title ||
-          title
-        );
+        const offerTitle =
+          escapeHtml(
+            offer.title || title
+          );
 
+        const price =
+          money(offer.price);
 
-      const price =
-        money(
-          offer.price
-        );
+        const score =
+          Math.round(
+            Number(
+              offer.matchScore || 0
+            ) * 100
+          );
 
+        const link =
+          offer.affiliateUrl ||
+          offer.url ||
+          "";
 
-      const score =
-        Math.round(
-          Number(
-            offer.matchScore ||
-            0
-          ) * 100
-        );
+        const image =
+          offer.image || "";
 
+        const storeClass =
+          getStoreClass(
+            offer.store
+          );
 
-      const link =
-        offer.affiliateUrl ||
-        offer.url ||
-        "";
+        return `
 
-
-      return `
-
-        <article class="product-card">
-
-          <div class="product-body">
-
-            <div class="store-name">
-              ${store}
-            </div>
-
-            <h2>
-              ${offerTitle}
-            </h2>
-
-            <div class="price">
-              ${price}
-            </div>
-
-            <p class="match-score">
-              Match confidence:
-              <strong>${score}%</strong>
-            </p>
+          <article class="
+            comparison-card
+            ${index === 0 ? "lowest-card" : ""}
+          ">
 
             ${
               index === 0
                 ? `
-                  <div class="lowest-price">
-                    💰 Lowest verified price
+                  <div class="lowest-banner">
+                    💰 LOWEST VERIFIED PRICE
                   </div>
                 `
                 : ""
             }
 
-            ${
-              link
-                ? `
-                  <a
-                    class="compare-button"
-                    href="${escapeAttr(link)}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View Offer →
-                  </a>
-                `
-                : ""
-            }
+            <div class="comparison-card-inner">
 
-          </div>
+              <div class="retailer-logo ${storeClass}">
+                ${store}
+              </div>
 
-        </article>
+              <div class="comparison-image">
 
-      `;
+                ${
+                  image
+                    ? `
+                      <img
+                        src="${escapeAttr(image)}"
+                        alt="${offerTitle}"
+                        loading="lazy"
+                      >
+                    `
+                    : `
+                      <div class="image-placeholder">
+                        🛍️
+                      </div>
+                    `
+                }
 
-    }
-  ).join("");
+              </div>
 
+              <div class="comparison-info">
+
+                <h2>
+                  ${offerTitle}
+                </h2>
+
+                <div class="comparison-price">
+                  ${price}
+                </div>
+
+                <div class="match-bar">
+
+                  <div
+                    class="match-fill"
+                    style="width:${score}%"
+                  ></div>
+
+                </div>
+
+                <p class="match-text">
+                  ${score}% product match
+                </p>
+
+                ${
+                  link
+                    ? `
+                      <a
+                        class="buy-button"
+                        href="${escapeAttr(link)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        🛒 View Offer
+                      </a>
+                    `
+                    : `
+                      <button
+                        class="buy-button"
+                        disabled
+                      >
+                        Offer unavailable
+                      </button>
+                    `
+                }
+
+              </div>
+
+            </div>
+
+          </article>
+
+        `;
+
+      }).join("")}
+
+    </div>
+
+    <div class="price-history-box">
+
+      <div class="history-icon">
+        📈
+      </div>
+
+      <div>
+
+        <h2>
+          Price History
+        </h2>
+
+        ${
+          history.length > 1
+            ? `
+              <p>
+                Zipron has recorded
+                <strong>${history.length}</strong>
+                verified price observations for this search
+                in this browser.
+              </p>
+            `
+            : `
+              <p>
+                Zipron will build price history as
+                verified prices are collected over time.
+              </p>
+            `
+        }
+
+        <small>
+          Historical prices are shown only when
+          verified retailer data is available.
+        </small>
+
+      </div>
+
+    </div>
+
+  `;
 }
-
 
 searchButton?.addEventListener(
   "click",
   compareProduct
 );
 
-
 searchEl?.addEventListener(
   "keydown",
   event => {
 
     if (event.key === "Enter") {
-
       compareProduct();
-
     }
 
   }
 );
-
 
 document
   .querySelectorAll(".example-search")
@@ -366,8 +497,7 @@ document
         const value =
           button.dataset.search;
 
-        searchEl.value =
-          value;
+        searchEl.value = value;
 
         compareProduct();
 
