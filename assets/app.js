@@ -530,3 +530,15 @@ document
     compareProduct();
   }, 500);
 })();
+(function autoCompareFromExtension() {
+  const params = new URLSearchParams(window.location.search);
+  const title = params.get("title");
+
+  if (!title || !searchEl) return;
+
+  searchEl.value = title;
+
+  setTimeout(() => {
+    compareProduct();
+  }, 500);
+})();
