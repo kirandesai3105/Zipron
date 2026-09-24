@@ -60,8 +60,364 @@ function renderNoResults(
 }
 
 function renderOffers(data) {
-  const offers = Array.isArray(data?.offers) ? data.offers : [];
+  const offers = Array.isArray(data?.offers)
+    ? data.offers
+    : [];
 
+  if (!resultsEl) return;
+
+  if (!offers.length) {
+    renderNoResults(
+      searchEl?.value || "this product",
+      data?.message || "No verified offers found."
+    );
+    return;
+  }
+
+  const prices = offers
+    .filter(o => o.price != null)
+    .map(o => Number(o.price))
+    .filter(Number.isFinite);
+
+  const min = prices.length
+    ? Math.min(...prices)
+    : null;
+
+  resultsEl.innerHTML = `
+    <div class="comparison-header">
+      <div>
+        <span class="comparison-count">
+          Found ${offers.length} verified matching offer(s)
+        </span>
+
+        <h2>Verified price comparison</h2>
+
+        <p>
+          Compare verified prices from available retailers.
+        </p>
+      </div>
+    </div>
+
+    <div class="comparison-list">
+
+      ${offers.map(o => {
+
+        const lowest =
+          min !== null &&
+          o.price != null &&
+          Number(o.price) === min;
+
+        const productTitle =
+          o.title ||
+          searchEl?.value ||
+          "Product";
+
+        const shortTitle =
+          productTitle.length > 95
+            ? productTitle.substring(0, 95) + "..."
+            : productTitle;
+
+        return `
+          <article class="zipron-product-card">
+
+            ${
+              lowest
+                ? `
+                  <div class="lowest-badge">
+                    ✓ LOWEST VERIFIED PRICE
+                  </div>
+                `
+                : ""
+            }
+
+            <div class="product-card-content">
+
+              <div class="product-image-box">
+
+                ${
+                  o.image
+                    ? `
+                      <img
+                        src="${esc(o.image)}"
+                        alt="${esc(productTitle)}"
+                        loading="lazy"
+                      >
+                    `
+                    : `
+                      <div class="product-image-placeholder">
+                        🛍️
+                      </div>
+                    `
+                }
+
+              </div>
+
+              <div class="product-details">
+
+                <div class="store-label">
+                  ${esc(o.store || "Store")}
+                </div>
+
+                <h3>
+                  ${esc(shortTitle)}
+                </h3>
+
+                <div class="match-label">
+                  ✓ ${Math.round(
+                    Number(o.matchScore || 0) * 100
+                  )}% Match
+                </div>
+
+              </div>
+
+              <div class="product-price-area">
+
+                <span class="price-label">
+                  Current price
+                </span>
+
+                <div class="product-price">
+                  ${money(o.price)}
+                </div>
+
+                <a
+                  class="buy-button"
+                  href="${esc(
+                    o.affiliateUrl ||
+                    o.url ||
+                    "#"
+                  )}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View Offer →
+                </a>
+
+              </div>
+
+            </div>
+
+          </article>
+        `;
+
+      }).join("")}
+
+    </div>
+  `;
+
+  addProductCardStyles();
+}
+function addProductCardStyles() {
+
+  if (document.getElementById("zipron-product-styles")) {
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "zipron-product-styles";
+
+  style.textContent = `
+
+    .comparison-header {
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .comparison-count {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .comparison-header h2 {
+      margin: 8px 0 5px;
+      font-size: 32px;
+      line-height: 1.15;
+    }
+
+    .comparison-header p {
+      margin: 0;
+      color: #64748b;
+    }
+
+    .comparison-list {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .zipron-product-card {
+      position: relative;
+      width: 100%;
+      box-sizing: border-box;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+    }
+
+    .product-card-content {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) 180px;
+      gap: 26px;
+      align-items: center;
+      padding: 26px;
+    }
+
+    .product-image-box {
+      width: 150px;
+      height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .product-image-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .product-image-placeholder {
+      font-size: 42px;
+    }
+
+    .store-label {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      background: #eff6ff;
+      color: #2563eb;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .product-details h3 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.45;
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .match-label {
+      margin-top: 12px;
+      color: #15803d;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .product-price-area {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .price-label {
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .product-price {
+      font-size: 30px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 16px;
+    }
+
+    .buy-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      background: #0f172a;
+      color: #ffffff !important;
+      text-decoration: none !important;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform .15s ease;
+    }
+
+    .buy-button:hover {
+      transform: translateY(-2px);
+    }
+
+    .lowest-badge {
+      padding: 9px 26px;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      border-bottom: 1px solid #d1fae5;
+    }
+
+    @media (max-width: 800px) {
+
+      .product-card-content {
+        grid-template-columns: 110px minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .product-image-box {
+        width: 110px;
+        height: 110px;
+      }
+
+      .product-price-area {
+        grid-column: 2;
+        align-items: flex-start;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 16px;
+      }
+
+      .product-price {
+        font-size: 26px;
+      }
+
+    }
+
+    @media (max-width: 520px) {
+
+      .product-card-content {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .product-image-box {
+        margin: auto;
+      }
+
+      .product-price-area {
+        grid-column: 1;
+        align-items: center;
+      }
+
+      .product-details h3 {
+        font-size: 17px;
+      }
+
+    }
+
+  `;
+
+  document.head.appendChild(style);
+}
   if (!resultsEl) return;
 
   if (!offers.length) {
