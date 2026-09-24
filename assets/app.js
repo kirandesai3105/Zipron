@@ -2,148 +2,198 @@ const API_URL = "https://zipron-api.onrender.com";
 
 const searchEl = document.getElementById("search");
 const searchButton = document.getElementById("searchButton");
-const resultsEl = document.getElementById("results");
 const statusEl = document.getElementById("status");
+const resultsEl = document.getElementById("results");
 
-function escapeHtml(value) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+const money = value => {
+  if (value == null || value === "" || Number.isNaN(Number(value))) {
+    return "Price unavailable";
+  }
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0
+  }).format(Number(value));
+};
+
+const esc = value =>
+  String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[ch]));
+
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
 }
 
-function escapeAttr(value) {
-  return escapeHtml(value);
+function renderNoResults(
+  title,
+  message = "Retailer connections for this product are not available yet."
+) {
+  if (!resultsEl) return;
+
+  resultsEl.innerHTML = `
+    <div class="zipron-no-results">
+      <div class="zipron-no-results-icon">🛍️</div>
+      <h2>We're preparing your comparison</h2>
+      <p>We searched for <b>${esc(title)}</b></p>
+      <p>${esc(message)}</p>
+
+      <div class="retailer-status">
+        <span>Amazon</span>
+        <b>Coming soon</b>
+      </div>
+
+      <div class="retailer-status">
+        <span>Flipkart</span>
+        <b>Coming soon</b>
+      </div>
+
+      <p class="small">
+        Zipron is continuously adding retailer connections.
+      </p>
+    </div>`;
 }
 
-function money(value) {
-  return "₹" + Number(value).toLocaleString("en-IN");
-}
+function renderOffers(data) {
+  const offers = Array.isArray(data?.offers) ? data.offers : [];
 
-function setStatus(message) {
-  if (!statusEl) return;
+  if (!resultsEl) return;
 
-  statusEl.innerHTML = `
-    <div class="notice">
-      ${message}
+  if (!offers.length) {
+    renderNoResults(
+      searchEl?.value || "this product",
+      data?.message || "No verified offers found."
+    );
+    return;
+  }
+
+  const prices = offers
+    .filter(o => o.price != null)
+    .map(o => Number(o.price));
+
+  const min = prices.length ? Math.min(...prices) : null;
+
+  resultsEl.innerHTML = `
+    <div class="comparison-summary">
+      <h2>Verified price comparison</h2>
+      <p>${offers.length} verified offer(s) found.</p>
     </div>
+
+    ${offers.map(o => {
+      const lowest =
+        min !== null &&
+        o.price != null &&
+        Number(o.price) === min;
+
+      return `
+        <article class="comparison-card ${lowest ? "lowest" : ""}">
+
+          ${
+            lowest
+              ? '<div class="lowest-price-banner">LOWEST VERIFIED PRICE</div>'
+              : ""
+          }
+
+          <div class="comparison-main">
+
+            <div class="comparison-image">
+              ${
+                o.image
+                  ? `<img src="${esc(o.image)}"
+                       alt="${esc(o.title || o.store)}">`
+                  : "🛍️"
+              }
+            </div>
+
+            <div class="comparison-info">
+
+              <div class="store-name">
+                ${esc(o.store || "Store")}
+              </div>
+
+              <h3>
+                ${esc(o.title || searchEl?.value || "Product")}
+              </h3>
+
+              <div class="comparison-price">
+                ${money(o.price)}
+              </div>
+
+              <div class="match-score">
+                Match confidence:
+                ${Math.round(Number(o.matchScore || 0) * 100)}%
+              </div>
+
+            </div>
+
+            <div class="comparison-action">
+
+              <a
+                class="buy-button"
+                href="${esc(o.affiliateUrl || o.url || "#")}"
+                target="_blank"
+                rel="noopener">
+                View Offer
+              </a>
+
+            </div>
+
+          </div>
+
+        </article>`;
+    }).join("")}
   `;
-}
-
-function getStoreClass(store) {
-  return String(store || "retailer")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-");
-}
-
-function savePriceHistory(title, offers) {
-
-  if (!offers.length) return;
-
-  try {
-
-    const history =
-      JSON.parse(
-        localStorage.getItem("zipronPriceHistory") || "{}"
-      );
-
-    if (!history[title]) {
-      history[title] = [];
-    }
-
-    offers.forEach(offer => {
-
-      if (offer.price == null) return;
-
-      history[title].push({
-        store: offer.store || "Retailer",
-        price: Number(offer.price),
-        date: new Date().toISOString()
-      });
-
-    });
-
-    // Keep the browser history manageable.
-    history[title] =
-      history[title].slice(-100);
-
-    localStorage.setItem(
-      "zipronPriceHistory",
-      JSON.stringify(history)
-    );
-
-  } catch (error) {
-
-    console.warn(
-      "Price history could not be saved.",
-      error
-    );
-
-  }
-}
-
-function getHistory(title) {
-
-  try {
-
-    const history =
-      JSON.parse(
-        localStorage.getItem("zipronPriceHistory") || "{}"
-      );
-
-    return history[title] || [];
-
-  } catch {
-
-    return [];
-
-  }
 }
 
 async function compareProduct() {
 
-  const title = searchEl.value.trim();
+  const title = searchEl?.value.trim();
 
   if (!title) {
-
-    setStatus(`
-      <h2>What are you looking for?</h2>
-
-      <p>
-        Enter a product name above to start comparing.
-      </p>
-    `);
-
-    searchEl.focus();
-
+    setStatus("Enter a product name first.");
     return;
   }
 
-  resultsEl.innerHTML = "";
+  setStatus("Searching verified retailer offers...");
 
-  setStatus(`
-    <div class="searching-box">
+  if (resultsEl) {
+    resultsEl.innerHTML = `
+      <div class="zipron-searching">
+        <h2>We're searching...</h2>
+        <p>Checking available retailer connections.</p>
+      </div>`;
+  }
 
-      <div class="loading-icon">
-        🔎
-      </div>
+  const params = new URLSearchParams(window.location.search);
 
-      <h2>
-        Searching for your product...
-      </h2>
+  const source = {
+    title,
 
-      <p>
-        Checking available retailer data for
-        <strong>${escapeHtml(title)}</strong>
-      </p>
+    price: params.get("price")
+      ? Number(params.get("price"))
+      : null,
 
-    </div>
-  `);
+    store: params.get("store") || "",
 
-  searchButton.disabled = true;
-  searchButton.innerHTML = "⏳ Searching...";
+    productId: params.get("productId") || "",
+
+    image: params.get("image") || "",
+
+    url: params.get("url") || "",
+
+    brand: params.get("brand") || "",
+
+    sku: params.get("sku") || "",
+
+    mpn: params.get("mpn") || "",
+
+    gtin: params.get("gtin") || ""
+  };
 
   try {
 
@@ -156,389 +206,94 @@ async function compareProduct() {
           "Content-Type": "application/json"
         },
 
-        body: JSON.stringify({
-          title: title
-        })
+        body: JSON.stringify(source)
       }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
-
       throw new Error(
-        data.error ||
-        "Unable to compare prices."
+        data?.error || `HTTP ${response.status}`
       );
-
     }
 
-    showResults(title, data);
+    setStatus(
+      data?.message || "Comparison complete."
+    );
+
+    renderOffers(data);
 
   } catch (error) {
 
-    setStatus(`
-      <div class="error-box">
-
-        <h2>
-          Something went wrong
-        </h2>
-
-        <p>
-          We couldn't complete the comparison right now.
-        </p>
-
-        <small>
-          ${escapeHtml(error.message)}
-        </small>
-
-      </div>
-    `);
-
-  } finally {
-
-    searchButton.disabled = false;
-    searchButton.innerHTML =
-      "🔍 Compare Prices";
-
-  }
-}
-
-function showResults(title, data) {
-
-  const offers = data.offers || [];
-
-  if (!offers.length) {
-
-    setStatus(`
-
-      <div class="no-results">
-
-        <div class="no-results-icon">
-          🛍️
-        </div>
-
-        <h2>
-          We're preparing your comparison
-        </h2>
-
-        <p>
-          We searched for
-          <strong>${escapeHtml(title)}</strong>.
-        </p>
-
-        <p>
-          Retailer connections for this product
-          are not available yet.
-        </p>
-
-        <div class="retailer-status">
-
-          <div>
-            <span>Amazon</span>
-            <b>Coming soon</b>
-          </div>
-
-          <div>
-            <span>Flipkart</span>
-            <b>Coming soon</b>
-          </div>
-
-        </div>
-
-        <p class="small-note">
-          Zipron is continuously adding retailer connections.
-        </p>
-
-      </div>
-
-    `);
-
-    resultsEl.innerHTML = "";
-
-    return;
-  }
-
-  // Store verified prices locally.
-  savePriceHistory(title, offers);
-
-  const history = getHistory(title);
-
-  setStatus(`
-
-    <div class="results-heading">
-
-      <div>
-
-        <span class="results-label">
-          PRICE COMPARISON
-        </span>
-
-        <h2>
-          ${escapeHtml(title)}
-        </h2>
-
-      </div>
-
-      <span class="offer-count">
-        ${offers.length}
-        ${offers.length === 1 ? "offer" : "offers"}
-      </span>
-
-    </div>
-
-  `);
-
-  resultsEl.innerHTML = `
-
-    <div class="comparison-grid">
-
-      ${offers.map((offer, index) => {
-
-        const store =
-          escapeHtml(
-            offer.store || "Retailer"
-          );
-
-        const offerTitle =
-          escapeHtml(
-            offer.title || title
-          );
-
-        const price =
-          money(offer.price);
-
-        const score =
-          Math.round(
-            Number(
-              offer.matchScore || 0
-            ) * 100
-          );
-
-        const link =
-          offer.affiliateUrl ||
-          offer.url ||
-          "";
-
-        const image =
-          offer.image || "";
-
-        const storeClass =
-          getStoreClass(
-            offer.store
-          );
-
-        return `
-
-          <article class="
-            comparison-card
-            ${index === 0 ? "lowest-card" : ""}
-          ">
-
-            ${
-              index === 0
-                ? `
-                  <div class="lowest-banner">
-                    💰 LOWEST VERIFIED PRICE
-                  </div>
-                `
-                : ""
-            }
-
-            <div class="comparison-card-inner">
-
-              <div class="retailer-logo ${storeClass}">
-                ${store}
-              </div>
-
-              <div class="comparison-image">
-
-                ${
-                  image
-                    ? `
-                      <img
-                        src="${escapeAttr(image)}"
-                        alt="${offerTitle}"
-                        loading="lazy"
-                      >
-                    `
-                    : `
-                      <div class="image-placeholder">
-                        🛍️
-                      </div>
-                    `
-                }
-
-              </div>
-
-              <div class="comparison-info">
-
-                <h2>
-                  ${offerTitle}
-                </h2>
-
-                <div class="comparison-price">
-                  ${price}
-                </div>
-
-                <div class="match-bar">
-
-                  <div
-                    class="match-fill"
-                    style="width:${score}%"
-                  ></div>
-
-                </div>
-
-                <p class="match-text">
-                  ${score}% product match
-                </p>
-
-                ${
-                  link
-                    ? `
-                      <a
-                        class="buy-button"
-                        href="${escapeAttr(link)}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        🛒 View Offer
-                      </a>
-                    `
-                    : `
-                      <button
-                        class="buy-button"
-                        disabled
-                      >
-                        Offer unavailable
-                      </button>
-                    `
-                }
-
-              </div>
-
-            </div>
-
-          </article>
-
-        `;
-
-      }).join("")}
-
-    </div>
-
-    <div class="price-history-box">
-
-      <div class="history-icon">
-        📈
-      </div>
-
-      <div>
-
-        <h2>
-          Price History
-        </h2>
-
-        ${
-          history.length > 1
-            ? `
-              <p>
-                Zipron has recorded
-                <strong>${history.length}</strong>
-                verified price observations for this search
-                in this browser.
-              </p>
-            `
-            : `
-              <p>
-                Zipron will build price history as
-                verified prices are collected over time.
-              </p>
-            `
-        }
-
-        <small>
-          Historical prices are shown only when
-          verified retailer data is available.
-        </small>
-
-      </div>
-
-    </div>
-
-  `;
-}
-
-searchButton?.addEventListener(
-  "click",
-  compareProduct
-);
-
-searchEl?.addEventListener(
-  "keydown",
-  event => {
-
-    if (event.key === "Enter") {
-      compareProduct();
+    console.error(error);
+
+    setStatus("Comparison failed.");
+
+    if (resultsEl) {
+      resultsEl.innerHTML = `
+        <div class="zipron-error">
+          <h2>Something went wrong</h2>
+          <p>${esc(error.message)}</p>
+        </div>`;
     }
-
   }
-);
+}
+
+if (searchButton) {
+  searchButton.addEventListener(
+    "click",
+    compareProduct
+  );
+}
+
+if (searchEl) {
+  searchEl.addEventListener(
+    "keydown",
+    e => {
+      if (e.key === "Enter") {
+        compareProduct();
+      }
+    }
+  );
+}
 
 document
-  .querySelectorAll(".example-search")
+  .querySelectorAll("[data-search]")
   .forEach(button => {
 
     button.addEventListener(
       "click",
       () => {
 
-        const value =
-          button.dataset.search;
-
-        searchEl.value = value;
+        if (searchEl) {
+          searchEl.value =
+            button.dataset.search ||
+            button.textContent.trim();
+        }
 
         compareProduct();
-
       }
     );
 
   });
-// Automatically start comparison when opened from Zipron extension
+
 (function autoCompareFromExtension() {
-  const params = new URLSearchParams(window.location.search);
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
   const title = params.get("title");
 
   if (!title || !searchEl) return;
 
   searchEl.value = title;
 
-  setTimeout(() => {
-    compareProduct();
-  }, 150);
-})();
-(function autoCompareFromExtension() {
-  const params = new URLSearchParams(window.location.search);
-  const title = params.get("title");
+  setTimeout(
+    compareProduct,
+    400
+  );
 
-  if (!title || !searchEl) return;
-
-  searchEl.value = title;
-
-  setTimeout(() => {
-    compareProduct();
-  }, 500);
-})();
-(function autoCompareFromExtension() {
-  const params = new URLSearchParams(window.location.search);
-  const title = params.get("title");
-
-  if (!title || !searchEl) return;
-
-  searchEl.value = title;
-
-  setTimeout(() => {
-    compareProduct();
-  }, 500);
 })();
