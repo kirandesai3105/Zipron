@@ -149,7 +149,213 @@ function renderOffers(data) {
     }).join("")}
   `;
 }
+async function loadPriceHistory(productId, store) {
+  if (!resultsEl || !productId) return;
 
+  try {
+    const params = new URLSearchParams({
+      productId: productId,
+      store: store || ""
+    });
+
+    const response = await fetch(
+      `${API_URL}/api/history?${params.toString()}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`History HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const history = Array.isArray(data.history)
+      ? data.history
+      : [];
+
+    if (!history.length) return;
+
+    const prices = history
+      .map(item => Number(item.price))
+      .filter(price => Number.isFinite(price));
+
+    if (!prices.length) return;
+
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
+    const historyHTML = `
+      <section
+        class="zipron-price-history"
+        style="
+          margin-top:30px;
+          padding:24px;
+          background:#fff;
+          border-radius:18px;
+          box-shadow:0 8px 30px rgba(0,0,0,.08);
+        "
+      >
+
+        <h2 style="margin:0 0 6px;">
+          📈 Price History
+        </h2>
+
+        <p style="margin:0 0 20px;color:#666;">
+          Saved Zipron price checks for this product
+        </p>
+
+        <div
+          style="
+            display:flex;
+            align-items:flex-end;
+            gap:10px;
+            height:220px;
+            padding:20px 10px 0;
+            border-bottom:1px solid #ddd;
+          "
+        >
+
+          ${history.map((item, index) => {
+
+            const price = Number(item.price);
+
+            let height = 30;
+
+            if (maxPrice > 0) {
+              height =
+                Math.max(
+                  30,
+                  (price / maxPrice) * 160
+                );
+            }
+
+            const date = new Date(
+              item.checked_at
+            );
+
+            const label =
+              Number.isNaN(date.getTime())
+                ? ""
+                : date.toLocaleDateString(
+                    "en-IN",
+                    {
+                      day: "2-digit",
+                      month: "short"
+                    }
+                  );
+
+            return `
+              <div
+                style="
+                  flex:1;
+                  min-width:45px;
+                  display:flex;
+                  flex-direction:column;
+                  align-items:center;
+                  justify-content:flex-end;
+                  height:100%;
+                "
+              >
+
+                <div
+                  style="
+                    font-size:12px;
+                    font-weight:700;
+                    margin-bottom:6px;
+                  "
+                >
+                  ₹${Math.round(price)}
+                </div>
+
+                <div
+                  title="₹${price}"
+                  style="
+                    width:70%;
+                    max-width:55px;
+                    height:${height}px;
+                    background:#111827;
+                    border-radius:7px 7px 0 0;
+                  "
+                ></div>
+
+                <div
+                  style="
+                    font-size:11px;
+                    color:#777;
+                    margin-top:7px;
+                  "
+                >
+                  ${label}
+                </div>
+
+              </div>
+            `;
+          }).join("")}
+
+        </div>
+
+        <div
+          style="
+            display:flex;
+            gap:30px;
+            margin-top:20px;
+            flex-wrap:wrap;
+          "
+        >
+
+          <div>
+            <small>Lowest recorded</small>
+            <div
+              style="
+                font-size:22px;
+                font-weight:700;
+              "
+            >
+              ₹${Math.round(minPrice)}
+            </div>
+          </div>
+
+          <div>
+            <small>Latest price</small>
+            <div
+              style="
+                font-size:22px;
+                font-weight:700;
+              "
+            >
+              ₹${Math.round(prices[prices.length - 1])}
+            </div>
+          </div>
+
+          <div>
+            <small>Price checks</small>
+            <div
+              style="
+                font-size:22px;
+                font-weight:700;
+              "
+            >
+              ${history.length}
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+    `;
+
+    resultsEl.insertAdjacentHTML(
+      "beforeend",
+      historyHTML
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Price history error:",
+      error
+    );
+
+  }
+}
 async function compareProduct() {
 
   const title = searchEl?.value.trim();
@@ -223,7 +429,10 @@ async function compareProduct() {
     );
 
     renderOffers(data);
-
+loadPriceHistory(
+  source.productId,
+  source.store
+);
   } catch (error) {
 
     console.error(error);
