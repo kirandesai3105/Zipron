@@ -505,3 +505,16 @@ document
     );
 
   });
+// Automatically start comparison when opened from Zipron extension
+(function autoCompareFromExtension() {
+  const params = new URLSearchParams(window.location.search);
+  const title = params.get("title");
+
+  if (!title || !searchEl) return;
+
+  searchEl.value = title;
+
+  setTimeout(() => {
+    compareProduct();
+  }, 150);
+})();
